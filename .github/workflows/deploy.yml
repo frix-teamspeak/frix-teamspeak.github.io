@@ -1,0 +1,49 @@
+name: Deploy website
+
+# The website lives in the main project (lyusufdeniz/frix-teamspeak-bot, folder site/).
+# This repository only builds it from there and publishes it at https://frix-teamspeak.github.io/
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: "17 * * * *"   # picks up changes in the main project every hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lyusufdeniz/frix-teamspeak-bot
+          path: src
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/screens _site/fonts
+          cp -r src/site/. _site/
+          cp src/docs/images/screens/*.png _site/screens/
+          cp src/docs/images/logo.svg src/docs/images/banner.png src/docs/images/favicon.ico _site/
+          cp src/FrixPanel/assets/fonts/JetBrainsMono-Regular.ttf src/FrixPanel/assets/fonts/JetBrainsMono-Bold.ttf _site/fonts/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
